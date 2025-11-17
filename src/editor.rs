@@ -9,15 +9,13 @@ use std::{io, path::Path, process::Command};
 pub fn open_editor<B: Backend + io::Write>(
     terminal: &mut Terminal<B>,
     file_path: &Path,
+    editor_cmd: &str,
 ) -> io::Result<bool> {
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), DisableMouseCapture)?;
     terminal.show_cursor()?;
 
-    let editor = std::env::var("EDITOR").unwrap_or_else(|_| "nvim".to_string());
-
-    // Open the editor
-    let status = Command::new(editor).arg(file_path).status()?;
+    let status = Command::new(editor_cmd).arg(file_path).status()?;
 
     enable_raw_mode()?;
     execute!(

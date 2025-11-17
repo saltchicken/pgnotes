@@ -36,10 +36,16 @@ fn main() -> io::Result<()> {
 
     let db_url = &config.database_url;
 
+    let editor_cmd = config
+        .editor
+        .clone()
+        .or_else(|| std::env::var("EDITOR").ok())
+        .unwrap_or_else(|| "nvim".to_string());
+
     if !config_path.exists() {
         fs::write(
             &config_path,
-            "# Configuration for pgnotes\n\n# PostgreSQL connection string.\ndatabase_url = \"postgresql://user:password@localhost/postgres\"\n",
+            "# Configuration for pgnotes\n\n# PostgreSQL connection string.\ndatabase_url = \"postgresql://user:password@localhost/postgres\"\n\n# editor = \"nvim\"\n",
         )?;
     }
 
@@ -54,7 +60,7 @@ fn main() -> io::Result<()> {
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new(&mut client, db_url)?;
+    let mut app = App::new(&mut client, db_url, editor_cmd)?;
     let res = run_app(&mut terminal, &mut app, &mut client);
 
     disable_raw_mode()?;
@@ -88,4 +94,3 @@ fn run_app<B: Backend + io::Write>(
         }
     }
 }
-

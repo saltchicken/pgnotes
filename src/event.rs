@@ -1,4 +1,3 @@
-// src/event.rs
 use crate::{
     app::{App, InputMode},
     db,
@@ -24,7 +23,7 @@ fn edit_note_in_external_editor<B: Backend + io::Write>(
         fs::write(&temp_file_path, &content)?;
 
         // 2. Open editor
-        let success = open_editor(terminal, &temp_file_path)?;
+        let success = open_editor(terminal, &temp_file_path, &app.editor_cmd)?;
 
         if success {
             // 3. Read content back
@@ -204,4 +203,3 @@ pub fn handle_key_event<B: Backend + io::Write>(
     }
     Ok(true)
 }
-

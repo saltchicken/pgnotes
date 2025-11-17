@@ -8,7 +8,7 @@ pub const CONFIG_FILE_NAME: &str = "config.toml";
 pub struct Config {
     #[serde(default = "default_database_url")]
     pub database_url: String,
-    // ‼️ Removed script_directory
+    pub editor: Option<String>,
 }
 
 fn default_database_url() -> String {
@@ -19,6 +19,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             database_url: default_database_url(),
+            editor: None,
         }
     }
 }

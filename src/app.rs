@@ -19,9 +19,10 @@ pub struct App {
     pub input_mode: InputMode,
     pub filename_input: String,
     pub help_message: String,
+    pub editor_cmd: String,
 }
 impl App {
-    pub fn new(client: &mut Client, db_url: &str) -> io::Result<Self> {
+    pub fn new(client: &mut Client, db_url: &str, editor_cmd: String) -> io::Result<Self> {
         let help_message = format!(
             "Welcome to Postgres Notes!\n\nDatabase: {}\n\n--- Keybinds ---\n'j'/'k'        : Navigate notes\n'Enter'/'e'    : Edit selected note\n'a'            : Add a new note\n'd'            : Delete selected note\n'r'            : Rename selected note\n'?'            : Toggle help\n'q'            : Quit",
             db_url
@@ -34,6 +35,7 @@ impl App {
             input_mode: InputMode::Normal,
             filename_input: String::new(),
             help_message,
+            editor_cmd,
         };
         app.refresh_notes(client)?;
         Ok(app)
@@ -108,4 +110,3 @@ impl App {
         }
     }
 }
-
