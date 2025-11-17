@@ -14,7 +14,7 @@ pub fn open_editor<B: Backend + io::Write>(
     execute!(terminal.backend_mut(), DisableMouseCapture)?;
     terminal.show_cursor()?;
 
-    let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
+    let editor = std::env::var("EDITOR").unwrap_or_else(|_| "nvim".to_string());
 
     // Open the editor
     let status = Command::new(editor).arg(file_path).status()?;
