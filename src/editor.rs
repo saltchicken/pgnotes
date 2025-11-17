@@ -1,7 +1,7 @@
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{EnterAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::Backend};
 use std::{io, path::Path, process::Command};
@@ -11,11 +11,7 @@ pub fn open_editor<B: Backend + io::Write>(
     file_path: &Path,
 ) -> io::Result<bool> {
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), DisableMouseCapture)?;
     terminal.show_cursor()?;
 
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
