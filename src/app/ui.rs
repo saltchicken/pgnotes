@@ -1,12 +1,15 @@
-use crate::app::{App, InputMode};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
 };
 
-pub fn ui(f: &mut Frame, app: &mut App) {
+
+use super::state::{AppState, InputMode};
+
+
+pub fn ui(f: &mut Frame, app: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(20), Constraint::Percentage(80)].as_ref())
@@ -30,17 +33,13 @@ pub fn ui(f: &mut Frame, app: &mut App) {
 
     f.render_stateful_widget(list, chunks[0], &mut app.list_state);
 
-
-    // Previous code had a vertical split here. We removed it.
+    // --- Right Pane: Preview ---
     let preview_block = Block::default().borders(Borders::ALL).title("Note Content");
     let preview_text = Paragraph::new(app.script_content_preview.as_str())
         .block(preview_block)
-        .wrap(ratatui::widgets::Wrap { trim: false }); // Added wrapping for long notes
+        .wrap(Wrap { trim: false }); // Added wrapping for long notes
 
     f.render_widget(preview_text, chunks[1]);
-
-    // --- Status Bar (Optional, overlaid at bottom or just popup logic) ---
-    // For simplicity, we just rely on popups for interactions, but you could add a status bar.
 
     // --- Popup Windows ---
     match app.input_mode {
@@ -62,10 +61,10 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::Red).fg(Color::White));
 
-
             let popup_paragraph = Paragraph::new(app.status_message.as_str())
                 .block(popup_block)
                 .alignment(Alignment::Center);
+
             f.render_widget(Clear, area);
             f.render_widget(popup_paragraph, area);
         }
@@ -76,6 +75,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 .title("Rename Note")
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::LightYellow).fg(Color::Black));
+
             let input_paragraph = Paragraph::new(input_text.as_str()).block(popup_block);
             f.render_widget(Clear, area);
             f.render_widget(input_paragraph, area);
@@ -86,6 +86,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             let popup_paragraph = Paragraph::new(app.help_message.as_str())
                 .block(popup_block)
                 .alignment(Alignment::Left);
+
             f.render_widget(Clear, area);
             f.render_widget(popup_paragraph, area);
         }
@@ -93,7 +94,6 @@ pub fn ui(f: &mut Frame, app: &mut App) {
     }
 }
 
-// Helper function remains unchanged
 fn centered_rect(percent_x: u16, height: u16, r: Rect) -> Rect {
     let (top_padding, bottom_padding) = {
         let total_padding = r.height.saturating_sub(height);

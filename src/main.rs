@@ -1,96 +1,10 @@
 mod app;
-mod config;
-mod db;
-mod editor;
-mod event;
-mod ui;
 
-use crate::{
-    app::App,
-    config::{CONFIG_DIR_NAME, CONFIG_FILE_NAME, load_config},
-    db::init_db,
-    event::handle_key_event,
-    ui::ui,
-};
-use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind, read},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
-use postgres::{Client, NoTls};
-use ratatui::{Terminal, backend::Backend};
-use std::{
-    fs,
-    io::{self, stdout},
-};
+use app::App;
+use std::io;
 
 fn main() -> io::Result<()> {
-    let config_dir_path = dirs::config_dir()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Could not find config directory"))?
-        .join(CONFIG_DIR_NAME);
-
-    fs::create_dir_all(&config_dir_path)?;
-
-    let config_path = config_dir_path.join(CONFIG_FILE_NAME);
-    let config = load_config(&config_path);
-
-    let db_url = &config.database_url;
-
-    let editor_cmd = config
-        .editor
-        .clone()
-        .or_else(|| std::env::var("EDITOR").ok())
-        .unwrap_or_else(|| "nvim".to_string());
-
-    if !config_path.exists() {
-        fs::write(
-            &config_path,
-            "# Configuration for pgnotes\n\n# PostgreSQL connection string.\ndatabase_url = \"postgresql://user:password@localhost/postgres\"\n\n# editor = \"nvim\"\n",
-        )?;
-    }
-
-    let mut client = Client::connect(db_url, NoTls)
-        .map_err(|e| io::Error::other(format!("DB connect error: {:#?}", e)))?;
-
-    init_db(&mut client).map_err(|e| io::Error::other(format!("Failed to init DB: {}", e)))?;
-
-    enable_raw_mode()?;
-    let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = ratatui::backend::CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    let mut app = App::new(&mut client, db_url, editor_cmd)?;
-    let res = run_app(&mut terminal, &mut app, &mut client);
-
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
-    if let Err(err) = res {
-        println!("{:?}", err)
-    }
-
+    let mut app = App::new()?;
+    app.run()?;
     Ok(())
-}
-
-fn run_app<B: Backend + io::Write>(
-    terminal: &mut Terminal<B>,
-    app: &mut App,
-    client: &mut Client,
-) -> io::Result<()> {
-    loop {
-        terminal.draw(|f| ui(f, app))?;
-
-        if let Event::Key(key) = read()?
-            && key.kind == KeyEventKind::Press
-            && !handle_key_event(key, app, client, terminal)?
-        {
-            return Ok(());
-        }
-    }
 }
