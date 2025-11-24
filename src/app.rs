@@ -6,7 +6,6 @@ use crossterm::{
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io::{self, stdout};
 
-
 mod config;
 mod db;
 mod editor;
@@ -14,16 +13,9 @@ mod events;
 mod state;
 mod ui;
 
-use self::{
-    config::Config,
-    db::Database,
-    events::handle_key_event,
-    state::AppState, // Renamed from your original App struct
-    ui::ui,
-};
+use self::{config::Config, db::Database, events::handle_key_event, state::AppState, ui::ui};
 
 pub struct App {
-
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     state: AppState,
     database: Database,
@@ -41,7 +33,7 @@ impl App {
         let editor_cmd = config.get_editor_command();
         let mut state = AppState::new(config.database_url.clone(), editor_cmd);
 
-
+        // Initial data fetch
         state.refresh_notes(&mut database)?;
 
         // 4. Init Terminal
@@ -59,7 +51,6 @@ impl App {
     }
 
     pub fn run(&mut self) -> io::Result<()> {
-
         loop {
             self.terminal.draw(|f| ui(f, &mut self.state))?;
 
