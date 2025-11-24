@@ -6,7 +6,6 @@ pub struct Database {
 }
 
 impl Database {
-
     pub fn new(db_url: &str) -> std::io::Result<Self> {
         let mut client = Client::connect(db_url, NoTls)
             .map_err(|e| std::io::Error::other(format!("DB connect error: {:#?}", e)))?;
@@ -20,11 +19,10 @@ impl Database {
                 content TEXT
             )",
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
 
         Ok(Self { client })
     }
-
 
     pub fn get_all_notes(&mut self) -> Result<Vec<Note>, Error> {
         let mut notes = Vec::new();
@@ -71,3 +69,4 @@ impl Database {
         Ok(())
     }
 }
+

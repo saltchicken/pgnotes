@@ -54,19 +54,15 @@ impl App {
         loop {
             self.terminal.draw(|f| ui(f, &mut self.state))?;
 
-            if let Event::Key(key) = read()? {
-                if key.kind == KeyEventKind::Press {
-                    // Pass specific subsystems to event handler
-                    let should_continue = handle_key_event(
-                        key,
-                        &mut self.state,
-                        &mut self.database,
-                        &mut self.terminal,
-                    )?;
+            if let Event::Key(key) = read()?
+                && key.kind == KeyEventKind::Press
+            {
+                // Pass specific subsystems to event handler
+                let should_continue =
+                    handle_key_event(key, &mut self.state, &mut self.database, &mut self.terminal)?;
 
-                    if !should_continue {
-                        break;
-                    }
+                if !should_continue {
+                    break;
                 }
             }
         }
