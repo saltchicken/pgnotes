@@ -12,23 +12,18 @@ fn edit_note_in_external_editor<B: Backend + io::Write>(
     db: &mut Database,
     terminal: &mut Terminal<B>,
 ) -> io::Result<()> {
-    // 1. Get ID and Content (Clone to end borrow of app)
     let selection = app.get_selected_note().map(|n| (n.id, n.content.clone()));
 
     if let Some((id, content)) = selection {
-        // 2. Create temp file
         let temp_dir = std::env::temp_dir();
         let temp_file_path = temp_dir.join(format!("pgnote_{}.md", id));
         fs::write(&temp_file_path, &content)?;
 
-        // 3. Open editor
         let success = open_editor(terminal, &temp_file_path, &app.editor_cmd)?;
 
         if success {
-            // 4. Read content back
             let new_content = fs::read_to_string(&temp_file_path)?;
 
-            // 5. Update DB (Using the Database struct method)
             if let Err(e) = db.update_note_content(id, &new_content) {
                 app.set_status(format!("Error saving note: {}", e));
             } else {
@@ -38,10 +33,7 @@ fn edit_note_in_external_editor<B: Backend + io::Write>(
             app.set_status("Editor exited with error.".to_string());
         }
 
-        // 6. Cleanup
         let _ = fs::remove_file(temp_file_path);
-
-        // 7. Refresh app state
         app.refresh_notes(db)?;
     }
     Ok(())
@@ -89,6 +81,25 @@ pub fn handle_key_event<B: Backend + io::Write>(
                     app.set_status("No note selected to rename.".to_string());
                 }
             }
+
+            KeyCode::Char('t') => {
+
+                let current_tags = app.get_selected_note().map(|n| n.tags.join(", "));
+
+                if let Some(tags) = current_tags {
+                    app.input_mode = InputMode::EditingTags;
+                    app.filename_input = tags; // Pre-fill with current tags
+                    app.set_status(
+                        "Edit tags (comma separated). [Enter] save, [Esc] cancel.".to_string(),
+                    );
+                } else {
+                    app.set_status("No note selected.".to_string());
+                }
+            }
+
+            KeyCode::Char('s') => {
+                app.toggle_sort();
+            }
             KeyCode::Char('?') => {
                 app.input_mode = InputMode::ShowHelp;
             }
@@ -101,13 +112,11 @@ pub fn handle_key_event<B: Backend + io::Write>(
                     app.input_mode = InputMode::Normal;
                     app.set_status("New note cancelled.".to_string());
                 } else {
-
                     match db.create_note(&title) {
                         Ok(_) => {
                             app.set_status(format!("Note '{}' created.", title));
                             app.refresh_notes(db)?;
 
-                            // Select the new note and open editor immediately
                             if let Some(idx) = app.notes.iter().position(|n| n.title == title) {
                                 app.list_state.select(Some(idx));
                                 app.update_preview();
@@ -131,11 +140,44 @@ pub fn handle_key_event<B: Backend + io::Write>(
             }
             _ => {}
         },
+
+        InputMode::EditingTags => match key.code {
+            KeyCode::Enter => {
+                // Parse comma-separated tags
+                let tags: Vec<String> = app
+                    .filename_input
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+
+                if let Some(note) = app.get_selected_note() {
+                    match db.update_note_tags(note.id, &tags) {
+                        Ok(_) => {
+                            app.set_status("Tags updated.".to_string());
+                            app.refresh_notes(db)?;
+                        }
+                        Err(e) => app.set_status(format!("Error updating tags: {}", e)),
+                    }
+                }
+                app.input_mode = InputMode::Normal;
+            }
+            KeyCode::Esc => {
+                app.input_mode = InputMode::Normal;
+                app.set_status("Tag editing cancelled.".to_string());
+            }
+            KeyCode::Backspace => {
+                app.filename_input.pop();
+            }
+            KeyCode::Char(c) => {
+                app.filename_input.push(c);
+            }
+            _ => {}
+        },
         InputMode::ConfirmingDelete => match key.code {
             KeyCode::Char('y') => {
                 let selection = app.get_selected_note().map(|n| (n.id, n.title.clone()));
                 if let Some((id, title)) = selection {
-
                     match db.delete_note(id) {
                         Ok(_) => {
                             app.set_status(format!("Note '{}' deleted.", title));
@@ -161,12 +203,10 @@ pub fn handle_key_event<B: Backend + io::Write>(
                 } else {
                     let selection = app.get_selected_note().map(|n| n.id);
                     if let Some(id) = selection {
-
                         match db.rename_note(id, &new_title) {
                             Ok(_) => {
                                 app.set_status("Note renamed.".to_string());
                                 app.refresh_notes(db)?;
-                                // Restore selection
                                 if let Some(idx) =
                                     app.notes.iter().position(|n| n.title == new_title)
                                 {

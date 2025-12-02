@@ -5,9 +5,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
 };
 
-
 use super::state::{AppState, InputMode};
-
 
 pub fn ui(f: &mut Frame, app: &mut AppState) {
     let chunks = Layout::default()
@@ -16,14 +14,29 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
         .split(f.area());
 
     // --- Left Pane: Note List ---
+
     let items: Vec<ListItem> = app
         .notes
         .iter()
-        .map(|note| ListItem::new(note.title.clone()))
+        .map(|note| {
+            let label = if note.tags.is_empty() {
+                note.title.clone()
+            } else {
+                // Show title + first tag or tag count indicator
+                format!("{} [{}]", note.title, note.tags.join(","))
+            };
+            ListItem::new(label)
+        })
         .collect();
 
+    let list_title = if app.sort_by_tags {
+        "Notes (Sort: Tag)"
+    } else {
+        "Notes (Sort: Title)"
+    };
+
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Notes"))
+        .block(Block::default().borders(Borders::ALL).title(list_title))
         .highlight_style(
             Style::default()
                 .bg(Color::LightGreen)
@@ -37,7 +50,7 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
     let preview_block = Block::default().borders(Borders::ALL).title("Note Content");
     let preview_text = Paragraph::new(app.script_content_preview.as_str())
         .block(preview_block)
-        .wrap(Wrap { trim: false }); // Added wrapping for long notes
+        .wrap(Wrap { trim: false });
 
     f.render_widget(preview_text, chunks[1]);
 
@@ -75,6 +88,19 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
                 .title("Rename Note")
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::LightYellow).fg(Color::Black));
+
+            let input_paragraph = Paragraph::new(input_text.as_str()).block(popup_block);
+            f.render_widget(Clear, area);
+            f.render_widget(input_paragraph, area);
+        }
+
+        InputMode::EditingTags => {
+            let area = centered_rect(50, 3, f.area());
+            let input_text = format!("{}_", app.filename_input);
+            let popup_block = Block::default()
+                .title("Edit Tags (comma separated)")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::LightCyan).fg(Color::Black));
 
             let input_paragraph = Paragraph::new(input_text.as_str()).block(popup_block);
             f.render_widget(Clear, area);
