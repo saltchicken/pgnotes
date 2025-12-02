@@ -12,6 +12,8 @@ fn edit_note_in_external_editor<B: Backend + io::Write>(
     db: &mut Database,
     terminal: &mut Terminal<B>,
 ) -> io::Result<()> {
+
+    // The ID is correct, so database operations will target the correct note.
     let selection = app.get_selected_note().map(|n| (n.id, n.content.clone()));
 
     if let Some((id, content)) = selection {
@@ -83,7 +85,6 @@ pub fn handle_key_event<B: Backend + io::Write>(
             }
 
             KeyCode::Char('t') => {
-
                 let current_tags = app.get_selected_note().map(|n| n.tags.join(", "));
 
                 if let Some(tags) = current_tags {
@@ -97,9 +98,13 @@ pub fn handle_key_event<B: Backend + io::Write>(
                 }
             }
 
-            KeyCode::Char('s') => {
-                app.toggle_sort();
+
+
+
+            KeyCode::Char('T') => {
+                app.open_tag_selector();
             }
+
             KeyCode::Char('?') => {
                 app.input_mode = InputMode::ShowHelp;
             }
@@ -143,7 +148,6 @@ pub fn handle_key_event<B: Backend + io::Write>(
 
         InputMode::EditingTags => match key.code {
             KeyCode::Enter => {
-                // Parse comma-separated tags
                 let tags: Vec<String> = app
                     .filename_input
                     .split(',')
@@ -228,6 +232,33 @@ pub fn handle_key_event<B: Backend + io::Write>(
             }
             KeyCode::Char(c) => {
                 app.filename_input.push(c);
+            }
+            _ => {}
+        },
+
+        InputMode::SelectingTagFilter => match key.code {
+            KeyCode::Char('j') => app.next_filter(),
+            KeyCode::Char('k') => app.previous_filter(),
+            KeyCode::Enter => {
+                if let Some(idx) = app.filter_list_state.selected() {
+                    if let Some(filter) = app.available_filters.get(idx).cloned() {
+                        app.active_filter = filter.clone();
+                        app.apply_current_filter();
+                        // Reset list selection
+                        if !app.notes.is_empty() {
+                            app.list_state.select(Some(0));
+                        } else {
+                            app.list_state.select(None);
+                        }
+                        app.update_preview();
+                        app.set_status(format!("Filter applied: {}", filter));
+                    }
+                }
+                app.input_mode = InputMode::Normal;
+            }
+            KeyCode::Esc | KeyCode::Char('q') => {
+                app.input_mode = InputMode::Normal;
+                app.set_status("Filter cancelled.".to_string());
             }
             _ => {}
         },

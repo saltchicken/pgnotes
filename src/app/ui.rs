@@ -29,11 +29,8 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
         })
         .collect();
 
-    let list_title = if app.sort_by_tags {
-        "Notes (Sort: Tag)"
-    } else {
-        "Notes (Sort: Title)"
-    };
+
+    let list_title = format!("Notes (Filter: {})", app.active_filter);
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(list_title))
@@ -116,25 +113,47 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
             f.render_widget(Clear, area);
             f.render_widget(popup_paragraph, area);
         }
+
+        InputMode::SelectingTagFilter => {
+            let area = centered_rect(40, 50, f.area()); // Taller popup for list
+            let items: Vec<ListItem> = app
+                .available_filters
+                .iter()
+                .map(|f| ListItem::new(format!("{}", f)))
+                .collect();
+
+            let list = List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Filter by Tag")
+                        .style(Style::default().bg(Color::DarkGray)),
+                )
+                .highlight_style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .highlight_symbol("> ");
+
+            f.render_widget(Clear, area);
+            f.render_stateful_widget(list, area, &mut app.filter_list_state);
+        }
         InputMode::Normal => {}
     }
 }
 
-fn centered_rect(percent_x: u16, height: u16, r: Rect) -> Rect {
-    let (top_padding, bottom_padding) = {
-        let total_padding = r.height.saturating_sub(height);
-        (
-            total_padding / 2,
-            total_padding.saturating_sub(total_padding / 2),
-        )
-    };
+fn centered_rect(percent_x: u16, height_percent_or_abs: u16, r: Rect) -> Rect {
+
+    // For small popups, height_percent_or_abs is usually small (like 3 for input boxes).
+    // For lists, we might want 50. Logic below assumes standard percentage-ish centering.
 
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(top_padding),
-            Constraint::Length(height),
-            Constraint::Length(bottom_padding),
+            Constraint::Percentage((100 - height_percent_or_abs) / 2),
+            Constraint::Percentage(height_percent_or_abs),
+            Constraint::Percentage((100 - height_percent_or_abs) / 2),
         ])
         .split(r);
 
