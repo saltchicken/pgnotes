@@ -10,15 +10,14 @@ impl Database {
         let mut client = Client::connect(db_url, NoTls)
             .map_err(|e| std::io::Error::other(format!("DB connect error: {:#?}", e)))?;
 
-
         client
             .batch_execute(
                 "CREATE TABLE IF NOT EXISTS notes (
                 id SERIAL PRIMARY KEY,
                 title TEXT UNIQUE NOT NULL,
-                content TEXT
-            );
-            ALTER TABLE notes ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';",
+                content TEXT,
+                tags TEXT DEFAULT '{}'
+            );",
             )
             .map_err(std::io::Error::other)?;
 
@@ -43,7 +42,6 @@ impl Database {
     }
 
     pub fn create_note(&mut self, title: &str) -> Result<(), Error> {
-
         self.client.execute(
             "INSERT INTO notes (title, content, tags) VALUES ($1, '', '{}')",
             &[&title],
@@ -58,7 +56,6 @@ impl Database {
         )?;
         Ok(())
     }
-
 
     pub fn update_note_tags(&mut self, id: i32, tags: &[String]) -> Result<(), Error> {
         self.client
@@ -80,3 +77,4 @@ impl Database {
         Ok(())
     }
 }
+
