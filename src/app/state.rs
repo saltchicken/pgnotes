@@ -11,7 +11,6 @@ pub struct Note {
     pub tags: Vec<String>,
 }
 
-
 #[derive(Clone, PartialEq, Debug)]
 pub enum TagFilter {
     All,
@@ -51,8 +50,6 @@ pub struct AppState {
     pub help_message: String,
     pub editor_cmd: String,
 
-
-
     pub active_filter: TagFilter,
     pub available_filters: Vec<TagFilter>,
     pub filter_list_state: ListState,
@@ -75,8 +72,6 @@ impl AppState {
             filename_input: String::new(),
             help_message,
             editor_cmd,
-
-
 
             active_filter: TagFilter::All,
             available_filters: Vec::new(),
@@ -110,7 +105,6 @@ impl AppState {
         Ok(())
     }
 
-
     pub fn apply_current_filter(&mut self) {
         self.notes = self
             .all_notes
@@ -123,10 +117,8 @@ impl AppState {
             .cloned()
             .collect();
 
-
         self.notes.sort_by(|a, b| a.title.cmp(&b.title));
     }
-
 
     pub fn open_tag_selector(&mut self) {
         // 1. Collect unique tags
@@ -154,7 +146,6 @@ impl AppState {
         self.filter_list_state.select(Some(0));
         self.set_status("Select tag to filter. [Enter] confirm, [Esc] cancel.".to_string());
     }
-
 
     pub fn next_filter(&mut self) {
         if self.available_filters.is_empty() {
@@ -236,12 +227,9 @@ impl AppState {
 
     pub fn update_preview(&mut self) {
         if let Some(note) = self.get_selected_note() {
-            let tags_line = if note.tags.is_empty() {
-                "No Tags".to_string()
-            } else {
-                format!("Tags: [{}]", note.tags.join(", "))
-            };
-            self.script_content_preview = format!("{}\n\n{}", tags_line, note.content);
+
+
+            self.script_content_preview = note.content.clone();
         } else {
             self.script_content_preview = "No notes found.".to_string();
         }
