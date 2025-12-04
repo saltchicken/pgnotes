@@ -30,7 +30,14 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
         .collect();
 
 
-    let list_title = format!("Notes (Filter: {})", app.active_filter);
+    let list_title = if app.search_query.is_empty() {
+        format!("Notes (Filter: {})", app.active_filter)
+    } else {
+        format!(
+            "Search: '{}' (Filter: {})",
+            app.search_query, app.active_filter
+        )
+    };
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(list_title))
@@ -47,7 +54,8 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
     let preview_block = Block::default().borders(Borders::ALL).title("Note Content");
     let preview_text = Paragraph::new(app.script_content_preview.as_str())
         .block(preview_block)
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: false })
+        .scroll((app.preview_scroll, 0));
 
     f.render_widget(preview_text, chunks[1]);
 
@@ -103,6 +111,21 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
             f.render_widget(Clear, area);
             f.render_widget(input_paragraph, area);
         }
+
+
+        InputMode::Searching => {
+            let area = centered_rect(50, 3, f.area());
+            let input_text = format!("{}_", app.search_query);
+            let popup_block = Block::default()
+                .title("Search Titles")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::Blue).fg(Color::White));
+
+            let input_paragraph = Paragraph::new(input_text.as_str()).block(popup_block);
+            f.render_widget(Clear, area);
+            f.render_widget(input_paragraph, area);
+        }
+
         InputMode::ShowHelp => {
             let area = centered_rect(60, 15, f.area());
             let popup_block = Block::default().title("Help").borders(Borders::ALL);
@@ -144,7 +167,6 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
 }
 
 fn centered_rect(percent_x: u16, height_percent_or_abs: u16, r: Rect) -> Rect {
-
     // For small popups, height_percent_or_abs is usually small (like 3 for input boxes).
     // For lists, we might want 50. Logic below assumes standard percentage-ish centering.
 

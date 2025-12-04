@@ -36,6 +36,7 @@ pub enum InputMode {
     ConfirmingDelete,
     RenamingScript,
     SelectingTagFilter,
+    Searching,
     ShowHelp,
 }
 
@@ -53,12 +54,16 @@ pub struct AppState {
     pub active_filter: TagFilter,
     pub available_filters: Vec<TagFilter>,
     pub filter_list_state: ListState,
+
+
+    pub search_query: String, // Tracks the text typed in search mode
+    pub preview_scroll: u16,  // Tracks the vertical scroll of the preview pane
 }
 
 impl AppState {
     pub fn new(db_url: String, editor_cmd: String) -> Self {
         let help_message = format!(
-            "Welcome to Postgres Notes!\n\nDatabase: {}\n\n--- Keybinds ---\n'j'/'k'        : Navigate notes\n'Enter'/'e'    : Edit selected note\n'a'            : Add a new note\n'd'            : Delete selected note\n'r'            : Rename selected note\n't'            : Edit tags for note\n'Shift+t'      : Filter by Tag ‼️\n'?'            : Toggle help\n'q'            : Quit",
+            "Welcome to Postgres Notes!\n\nDatabase: {}\n\n--- Keybinds ---\n'j'/'k'        : Navigate notes\n'Enter'/'e'    : Edit selected note\n'a'            : Add a new note\n'd'            : Delete selected note\n'r'            : Rename selected note\n't'            : Edit tags for note\n'Shift+t'      : Filter by Tag\n'/'            : Search Titles ‼️\n'Ctrl+j/k'     : Scroll Preview ‼️\n'?'            : Toggle help\n'q'            : Quit",
             db_url
         );
 
@@ -76,6 +81,10 @@ impl AppState {
             active_filter: TagFilter::All,
             available_filters: Vec::new(),
             filter_list_state: ListState::default(),
+
+
+            search_query: String::new(),
+            preview_scroll: 0,
         }
     }
 
@@ -106,13 +115,28 @@ impl AppState {
     }
 
     pub fn apply_current_filter(&mut self) {
+
         self.notes = self
             .all_notes
             .iter()
-            .filter(|n| match &self.active_filter {
-                TagFilter::All => true,
-                TagFilter::Untagged => n.tags.is_empty(),
-                TagFilter::Specific(tag) => n.tags.contains(tag),
+            .filter(|n| {
+                // Check Tag Filter
+                let matches_tag = match &self.active_filter {
+                    TagFilter::All => true,
+                    TagFilter::Untagged => n.tags.is_empty(),
+                    TagFilter::Specific(tag) => n.tags.contains(tag),
+                };
+
+                // Check Search Query
+                let matches_search = if self.search_query.is_empty() {
+                    true
+                } else {
+                    n.title
+                        .to_lowercase()
+                        .contains(&self.search_query.to_lowercase())
+                };
+
+                matches_tag && matches_search
             })
             .cloned()
             .collect();
@@ -226,12 +250,22 @@ impl AppState {
     }
 
     pub fn update_preview(&mut self) {
+
+        self.preview_scroll = 0;
+
         if let Some(note) = self.get_selected_note() {
-
-
             self.script_content_preview = note.content.clone();
         } else {
             self.script_content_preview = "No notes found.".to_string();
         }
+    }
+
+
+    pub fn scroll_preview_down(&mut self) {
+        self.preview_scroll = self.preview_scroll.saturating_add(1);
+    }
+
+    pub fn scroll_preview_up(&mut self) {
+        self.preview_scroll = self.preview_scroll.saturating_sub(1);
     }
 }

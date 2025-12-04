@@ -3,7 +3,7 @@ use crate::app::{
     editor::open_editor,
     state::{AppState, InputMode},
 };
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::Backend};
 use std::{fs, io};
 
@@ -12,7 +12,6 @@ fn edit_note_in_external_editor<B: Backend + io::Write>(
     db: &mut Database,
     terminal: &mut Terminal<B>,
 ) -> io::Result<()> {
-
     // The ID is correct, so database operations will target the correct note.
     let selection = app.get_selected_note().map(|n| (n.id, n.content.clone()));
 
@@ -50,8 +49,26 @@ pub fn handle_key_event<B: Backend + io::Write>(
     match app.input_mode {
         InputMode::Normal => match key.code {
             KeyCode::Char('q') => return Ok(false),
-            KeyCode::Char('j') => app.next(),
-            KeyCode::Char('k') => app.previous(),
+            KeyCode::Char('j') => {
+
+                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                    app.scroll_preview_down();
+                } else {
+                    app.next();
+                }
+            }
+            KeyCode::Char('k') => {
+
+                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                    app.scroll_preview_up();
+                } else {
+                    app.previous();
+                }
+            }
+
+            KeyCode::Down => app.scroll_preview_down(),
+            KeyCode::Up => app.scroll_preview_up(),
+
             KeyCode::Enter | KeyCode::Char('e') => {
                 edit_note_in_external_editor(app, db, terminal)?;
             }
@@ -98,11 +115,17 @@ pub fn handle_key_event<B: Backend + io::Write>(
                 }
             }
 
-
-
-
             KeyCode::Char('T') => {
                 app.open_tag_selector();
+            }
+
+
+            KeyCode::Char('/') => {
+                app.input_mode = InputMode::Searching;
+                app.set_status(
+                    "Search mode: Type to filter, [Enter] to keep filter, [Esc] to clear."
+                        .to_string(),
+                );
             }
 
             KeyCode::Char('?') => {
@@ -110,6 +133,36 @@ pub fn handle_key_event<B: Backend + io::Write>(
             }
             _ => {}
         },
+
+
+        InputMode::Searching => match key.code {
+            KeyCode::Enter => {
+                // Keep the filter applied, return to normal navigation
+                app.input_mode = InputMode::Normal;
+                app.set_status(format!("Search applied: '{}'", app.search_query));
+            }
+            KeyCode::Esc => {
+                // Clear search and return to normal
+                app.search_query.clear();
+                app.apply_current_filter();
+                app.input_mode = InputMode::Normal;
+                app.set_status("Search cleared.".to_string());
+                // Reset list to top
+                if !app.notes.is_empty() {
+                    app.list_state.select(Some(0));
+                }
+            }
+            KeyCode::Backspace => {
+                app.search_query.pop();
+                app.apply_current_filter();
+            }
+            KeyCode::Char(c) => {
+                app.search_query.push(c);
+                app.apply_current_filter();
+            }
+            _ => {}
+        },
+
         InputMode::EditingFilename => match key.code {
             KeyCode::Enter => {
                 let title = app.filename_input.trim().to_string();
