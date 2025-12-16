@@ -16,15 +16,9 @@ impl Database {
                 id SERIAL PRIMARY KEY,
                 title TEXT UNIQUE NOT NULL,
                 content TEXT,
-                tags TEXT DEFAULT '{}'
+                tags TEXT DEFAULT '{}',
+                archived BOOLEAN DEFAULT FALSE
             );",
-            )
-            .map_err(std::io::Error::other)?;
-
-
-        client
-            .batch_execute(
-                "ALTER TABLE notes ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;",
             )
             .map_err(std::io::Error::other)?;
 
@@ -33,7 +27,6 @@ impl Database {
 
     pub fn get_all_notes(&mut self) -> Result<Vec<Note>, Error> {
         let mut notes = Vec::new();
-
 
         for row in self
             .client
@@ -86,7 +79,6 @@ impl Database {
         Ok(())
     }
 
-
     pub fn update_archive_status(&mut self, id: i32, archived: bool) -> Result<(), Error> {
         self.client.execute(
             "UPDATE notes SET archived = $1 WHERE id = $2",
@@ -95,3 +87,4 @@ impl Database {
         Ok(())
     }
 }
+
