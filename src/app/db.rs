@@ -21,21 +21,30 @@ impl Database {
             )
             .map_err(std::io::Error::other)?;
 
+
+        client
+            .batch_execute(
+                "ALTER TABLE notes ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;",
+            )
+            .map_err(std::io::Error::other)?;
+
         Ok(Self { client })
     }
 
     pub fn get_all_notes(&mut self) -> Result<Vec<Note>, Error> {
         let mut notes = Vec::new();
 
+
         for row in self
             .client
-            .query("SELECT id, title, content, tags FROM notes", &[])?
+            .query("SELECT id, title, content, tags, archived FROM notes", &[])?
         {
             notes.push(Note {
                 id: row.get(0),
                 title: row.get(1),
                 content: row.get(2),
                 tags: row.get(3),
+                archived: row.get(4),
             });
         }
         Ok(notes)
@@ -76,5 +85,13 @@ impl Database {
             .execute("DELETE FROM notes WHERE id = $1", &[&id])?;
         Ok(())
     }
-}
 
+
+    pub fn update_archive_status(&mut self, id: i32, archived: bool) -> Result<(), Error> {
+        self.client.execute(
+            "UPDATE notes SET archived = $1 WHERE id = $2",
+            &[&archived, &id],
+        )?;
+        Ok(())
+    }
+}

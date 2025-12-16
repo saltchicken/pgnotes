@@ -50,7 +50,6 @@ pub fn handle_key_event<B: Backend + io::Write>(
         InputMode::Normal => match key.code {
             KeyCode::Char('q') => return Ok(false),
             KeyCode::Char('j') => {
-
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
                     app.scroll_preview_down();
                 } else {
@@ -58,7 +57,6 @@ pub fn handle_key_event<B: Backend + io::Write>(
                 }
             }
             KeyCode::Char('k') => {
-
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
                     app.scroll_preview_up();
                 } else {
@@ -101,6 +99,35 @@ pub fn handle_key_event<B: Backend + io::Write>(
                 }
             }
 
+            KeyCode::Char('x') => {
+                if let Some(note) = app.get_selected_note() {
+                    let new_status = !note.archived;
+                    match db.update_archive_status(note.id, new_status) {
+                        Ok(_) => {
+                            let action = if new_status { "Archived" } else { "Unarchived" };
+                            app.set_status(format!("Note '{}' {}.", note.title, action));
+                            app.refresh_notes(db)?;
+                        }
+                        Err(e) => app.set_status(format!("Error updating archive status: {}", e)),
+                    }
+                }
+            }
+
+            KeyCode::Char('v') => {
+                app.toggle_view_mode();
+                app.apply_current_filter();
+                // Select first if available
+                if !app.notes.is_empty() {
+                    app.list_state.select(Some(0));
+                }
+                app.update_preview();
+                let view_name = match app.view_mode {
+                    crate::app::state::ViewMode::Active => "Active Notes",
+                    crate::app::state::ViewMode::Archived => "Archived Notes",
+                };
+                app.set_status(format!("Switched to {}", view_name));
+            }
+
             KeyCode::Char('t') => {
                 let current_tags = app.get_selected_note().map(|n| n.tags.join(", "));
 
@@ -119,7 +146,6 @@ pub fn handle_key_event<B: Backend + io::Write>(
                 app.open_tag_selector();
             }
 
-
             KeyCode::Char('/') => {
                 app.input_mode = InputMode::Searching;
                 app.set_status(
@@ -133,7 +159,6 @@ pub fn handle_key_event<B: Backend + io::Write>(
             }
             _ => {}
         },
-
 
         InputMode::Searching => match key.code {
             KeyCode::Enter => {

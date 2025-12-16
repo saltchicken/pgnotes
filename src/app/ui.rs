@@ -29,14 +29,20 @@ pub fn ui(f: &mut Frame, app: &mut AppState) {
         })
         .collect();
 
-    let list_title = if app.search_query.is_empty() {
-        format!("Notes (Filter: {})", app.active_filter)
-    } else {
-        format!(
-            "Search: '{}' (Filter: {})",
-            app.search_query, app.active_filter
-        )
-    };
+
+    let list_title = format!(
+        "{} (Filter: {}){}",
+        match app.view_mode {
+            crate::app::state::ViewMode::Active => "Notes",
+            crate::app::state::ViewMode::Archived => "Archived Notes",
+        },
+        app.active_filter,
+        if app.search_query.is_empty() {
+            "".to_string()
+        } else {
+            format!(" | Search: '{}'", app.search_query)
+        }
+    );
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(list_title))
@@ -205,4 +211,3 @@ fn centered_rect(percent_x: u16, height_percent: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
-

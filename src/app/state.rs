@@ -9,6 +9,7 @@ pub struct Note {
     pub title: String,
     pub content: String,
     pub tags: Vec<String>,
+    pub archived: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -26,6 +27,13 @@ impl std::fmt::Display for TagFilter {
             TagFilter::Specific(t) => write!(f, "#{}", t),
         }
     }
+}
+
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ViewMode {
+    Active,
+    Archived,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -55,15 +63,16 @@ pub struct AppState {
     pub available_filters: Vec<TagFilter>,
     pub filter_list_state: ListState,
 
+    pub search_query: String,
+    pub preview_scroll: u16,
 
-    pub search_query: String, // Tracks the text typed in search mode
-    pub preview_scroll: u16,  // Tracks the vertical scroll of the preview pane
+    pub view_mode: ViewMode,
 }
 
 impl AppState {
     pub fn new(db_url: String, editor_cmd: String) -> Self {
         let help_message = format!(
-            "Welcome to Postgres Notes!\n\nDatabase: {}\n\n--- Keybinds ---\n'j'/'k'        : Navigate notes\n'Enter'/'e'    : Edit selected note\n'a'            : Add a new note\n'd'            : Delete selected note\n'r'            : Rename selected note\n't'            : Edit tags for note\n'Shift+t'      : Filter by Tag\n'/'            : Search Titles ‼️\n'Ctrl+j/k'     : Scroll Preview ‼️\n'?'            : Toggle help\n'q'            : Quit",
+            "Welcome to Postgres Notes!\n\nDatabase: {}\n\n--- Keybinds ---\n'j'/'k'        : Navigate notes\n'Enter'/'e'    : Edit selected note\n'a'            : Add a new note\n'd'            : Delete selected note\n'r'            : Rename selected note\n'x'            : Archive/Unarchive note ‼️\n'v'            : Toggle Archive view ‼️\n't'            : Edit tags for note\n'Shift+t'      : Filter by Tag\n'/'            : Search Titles\n'Ctrl+j/k'     : Scroll Preview\n'?'            : Toggle help\n'q'            : Quit",
             db_url
         );
 
@@ -82,9 +91,9 @@ impl AppState {
             available_filters: Vec::new(),
             filter_list_state: ListState::default(),
 
-
             search_query: String::new(),
             preview_scroll: 0,
+            view_mode: ViewMode::Active,
         }
     }
 
@@ -115,11 +124,16 @@ impl AppState {
     }
 
     pub fn apply_current_filter(&mut self) {
-
         self.notes = self
             .all_notes
             .iter()
             .filter(|n| {
+
+                let matches_view = match self.view_mode {
+                    ViewMode::Active => !n.archived,
+                    ViewMode::Archived => n.archived,
+                };
+
                 // Check Tag Filter
                 let matches_tag = match &self.active_filter {
                     TagFilter::All => true,
@@ -136,7 +150,7 @@ impl AppState {
                         .contains(&self.search_query.to_lowercase())
                 };
 
-                matches_tag && matches_search
+                matches_view && matches_tag && matches_search
             })
             .cloned()
             .collect();
@@ -250,7 +264,6 @@ impl AppState {
     }
 
     pub fn update_preview(&mut self) {
-
         self.preview_scroll = 0;
 
         if let Some(note) = self.get_selected_note() {
@@ -260,12 +273,21 @@ impl AppState {
         }
     }
 
-
     pub fn scroll_preview_down(&mut self) {
         self.preview_scroll = self.preview_scroll.saturating_add(1);
     }
 
     pub fn scroll_preview_up(&mut self) {
         self.preview_scroll = self.preview_scroll.saturating_sub(1);
+    }
+
+
+    pub fn toggle_view_mode(&mut self) {
+        self.view_mode = match self.view_mode {
+            ViewMode::Active => ViewMode::Archived,
+            ViewMode::Archived => ViewMode::Active,
+        };
+        // Reset selection when switching views
+        self.list_state.select(None);
     }
 }
