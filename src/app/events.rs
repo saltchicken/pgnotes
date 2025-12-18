@@ -17,7 +17,8 @@ fn edit_note_in_external_editor<B: Backend + io::Write>(
 
     if let Some((id, content)) = selection {
         let temp_dir = std::env::temp_dir();
-        let temp_file_path = temp_dir.join(format!("pgnote_{}.md", id));
+
+        let temp_file_path = temp_dir.join(format!("pgnote_{}.txt", id));
         fs::write(&temp_file_path, &content)?;
 
         let success = open_editor(terminal, &temp_file_path, &app.editor_cmd)?;
